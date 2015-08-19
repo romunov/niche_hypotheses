@@ -1,0 +1,126 @@
+\documentclass[a4paper, 12pt, oneside]{article}
+\usepackage[tmargin=35mm, bmargin=30mm, lmargin=30mm, rmargin=25mm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[colorlinks = true, urlcolor = blue, citecolor = blue]{hyperref}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{natbib}
+\usepackage{etoolbox} % use \thanks{} next to author name to add institution, address, email....
+
+\setlength{\parindent}{0pt} % global \noindent
+
+\title{Niches within niches \\ Analysis workflow and results}
+\author{Roman Luštrik \& Cene Fišer}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+<<setup_chunk, echo = FALSE>>=
+opts_knit$set(latex.options.color = "edit-eclipse") # namesto \usepackage[monochrome]{color}
+opts_chunk$set(cache = FALSE, dev = "cairo_pdf", fig.show = "hold", fig.width = 10, fig.height = 10, out.width = "\\textwidth", tidy = FALSE, comment = NA)
+options(scipen = 6, digits = 4, width = 100)
+read_chunk("functions.R")
+@
+
+\section{Flow of analysis}
+
+Data consists of 17 variables (morphological characters). Body length was log
+transformed. For each character, minimum and maximum values were calculated
+(termed ``limits''). To define the morphospace (\emph{n}-dimensional hypervolume
+as mentioned in \citet{stubbs-wilson-2004}), 20000 virtual species were
+constructed so that for each variable, a random value from a uniform
+distribution bound by  aforementioned ``limits'' \citep{rabosky-et-al-2007}. \\
+
+%\citet{wilson-stubbs-2012} so podatkom prej zreducirali dimenzionalnost tako, da
+%so naredili PCA, nato pa na komponentah, ki so pojasnile 90\% variabilnosti,
+%izračunali razdalje.\\
+
+An euclidean distance\footnote{$d(p,q) = \sqrt{(p_1 - q_1)^2 +(p_2 - q_2)^2 +
+\ldots + (p_n, q_n)^2}$} was calculated for all 10000 pairs of virtual species,
+resulting in 10000 distances. Euclidean distance of actual community pair was
+calculated and compared against the distribution of euclidean distances to see
+what proportion of values are smaller. Results were also visualized in a graph
+depicting a distribution of euclidean distances between virtual species and an
+euclidean distance of actual community pair.\\
+
+To compare three species from an assemblage, 30000 phantom species were
+``constructed'' as described in the previous paragraph. For three species,
+standard deviation was calculated from two shortest pair-wise euclidean
+distances. The same was done for an actual community pair and compared against
+the theoretical values (resulting in 10000 values of standard deviation). Results were
+visualized as described in previous paragraph.
+
+\section{Simulation}
+% zmanjšaj veliksot fontov v code chunkih
+<<functions, size = "scriptsize">>=
+@
+
+<<import_data, size = "scriptsize">>=
+library(xlsx)
+library(ggplot2)
+library(gridExtra)
+
+preds <- read.xlsx("./data/data_randomizations_final.xls", sheetName = "morphospace1")
+vegs <- read.xlsx("./data/data_randomizations_final.xls", sheetName = "morphospace2")
+preds.desc <- read.xlsx("./data/data_randomizations_final.xls", sheetName = "communities1")
+vegs.desc <- read.xlsx("./data/data_randomizations_final.xls", sheetName = "communities2")
+
+preds$ecomorph <- NULL
+vegs$ecomorph <- NULL
+
+# exclude locations with identical species pairs or triplets
+preds.desc <- preds.desc[!preds.desc$locality %in% c("Belluno"), ]
+@
+
+<<simulation_parameters_and_functions, size = "scriptsize">>=
+N <- 10000 # number of simulations
+@
+
+<<run_simulations, size = "scriptsize">>=
+# run simulation
+preds.euc <- calculateEuclideanForTwoSpecies(input = preds, MLP = 2, desc = preds.desc, N = N)
+preds.sd <- calculateSDforThreeSpecies(input = preds, MLP = 3, desc = preds.desc, N = N)
+vegs.euc <- calculateEuclideanForTwoSpecies(input = vegs, MLP = 2, desc = vegs.desc, N = N)
+vegs.sd <- calculateSDforThreeSpecies(input = vegs, MLP = 3, desc = vegs.desc, N = N)
+@
+
+\newpage
+\section{Final result}
+<<final_result, size = "scriptsize", fig.cap = "Top left: A histogram of euclidean distances under a null model and real values (vertical lines) for predators. Top right: A histogram of standard deviations under a null model and real values (vertical lines) of predators. Bottom left: A histogram of euclidean distances under a null model and real values (vertical lines) for microfeeders. Bottom right: A histogram of standard deviations under a null model and actual values (vertical lines) for microfeeders.">>=
+suppressMessages(fig.preds.euc <- drawFigure(preds.euc, xlab = "ed"))
+suppressMessages(fig.preds.sd <- drawFigure(preds.sd, xlab = "sd"))
+suppressMessages(fig.vegs.euc <- drawFigure(vegs.euc, xlab = "ed"))
+suppressMessages(fig.vegs.sd <- drawFigure(vegs.sd, xlab = "sd"))
+suppressMessages(grid.arrange(fig.preds.euc, fig.preds.sd, fig.vegs.euc, fig.vegs.sd))
+
+# raw values of actual pairs or triplets
+paste(preds.euc$labels, preds.euc$pval)
+paste(preds.sd$labels, preds.sd$pval)
+paste(vegs.euc$labels, vegs.euc$pval)
+paste(vegs.sd$labels, vegs.sd$pval)
+@
+
+<<echo = FALSE, eval = FALSE>>=
+# just something to make a raw figure
+fig.preds.euc <- drawFigure(preds.euc, xlab = "ed", label = FALSE)
+fig.preds.sd <- drawFigure(preds.sd, xlab = "sd", label = FALSE)
+fig.vegs.euc <- drawFigure(vegs.euc, xlab = "ed", label = FALSE)
+fig.vegs.sd <- drawFigure(vegs.sd, xlab = "sd", label = FALSE)
+pdf("raw_figure.pdf", width = 10, height = 10)
+grid.arrange(fig.preds.euc, fig.preds.sd, fig.vegs.euc, fig.vegs.sd)
+dev.off()
+@
+
+
+\newpage
+\bibliographystyle{authordate1}
+\bibliography{q:/clanki/bazaclankov}
+
+\end{document}
