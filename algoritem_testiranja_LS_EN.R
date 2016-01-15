@@ -56,8 +56,10 @@ diff.btw.clust
 
 last_plot() +
     geom_vline(data = diff.btw.clust, aes(xintercept = distance)) +
-    geom_text(data = diff.btw.clust, aes(x = distance, y = 1 + c(12, 12, 10, 12, 12, 13, 7.5, 12), label = label),
+    geom_text(data = diff.btw.clust, aes(x = distance, y = c(12, 12, 10, 10, 12, 10, 7.5, 12) - 5, label = label),
               angle = 90, vjust = 1, size = 3)
+
+ggsave("./figure/pairs_from_constrained_clusters.pdf", width = 5, height = 5)
 
 t.test(x = null.model.diff.clust, y = diff.btw.clust$distance)
 var.test(x = null.model.diff.clust, y = diff.btw.clust$distance)
@@ -75,12 +77,27 @@ ggplot(data.frame(x = null.model.2), aes(x = x)) +
     geom_histogram()
 
 # tole nariši na nulti model skupaj s p-ji
-ng.nm <- euclidDistance(spe[spe$Species %in% c("N_grandii", "N_microcerberus"), !grepl("Species|ecomorph|group", x = names(spe))])
-nl.np <- euclidDistance(spe[spe$Species %in% c("N_longidactylus", "N_pupetta"), !grepl("Species|ecomorph|group", x = names(spe))])
-c.nt <- euclidDistance(spe[spe$Species %in% c("Carinurella", "N_transitivus"), !grepl("Species|ecomorph|group", x = names(spe))])
-nk.nl <- euclidDistance(spe[spe$Species %in% c("N_kochianus", "N_longidactylus"), !grepl("Species|ecomorph|group", x = names(spe))])
-nm.ns <- euclidDistance(spe[spe$Species %in% c("N_multipennatus", "N_serbicus"), !grepl("Species|ecomorph|group", x = names(spe))])
-na.nf <- euclidDistance(spe[spe$Species %in% c("N_aquilex", "N_fontanus"), !grepl("Species|ecomorph|group", x = names(spe))])
+list.o.specs2 <- list(c("N_grandii", "N_microcerberus"),
+     c("N_longidactylus", "N_pupetta"),
+     c("Carinurella", "N_transitivus"),
+     c("N_kochianus", "N_longidactylus"),
+     c("N_multipennatus", "N_serbicus"),
+     c("N_aquilex", "N_fontanus"))
+
+dist.2spec <- sapply(X = list.o.specs2, FUN = function(x, spe) {
+         euclidDistance(spe[spe$Species %in% x, !grepl("Species|ecomorph|group", x = names(spe))])
+     }, spe = spe)
+
+dist.2specs <- data.frame(dists = dist.2spec, specs = sapply(list.o.specs2, paste, collapse = "-"))
+dist.2specs$pval <- sapply(dist.2specs$dists, FUN = function(x) prop(table(x < null.model.2)))
+dist.2specs$label <- sprintf("%s: %.3f", dist.2specs$specs, dist.2specs$pval)
+
+last_plot() +
+    geom_vline(data = dist.2specs, aes(xintercept = dists)) +
+    geom_text(data = dist.2specs, aes(x = dists, y = 7, label = label),
+              angle = 90, vjust = 1, size = 3)
+
+ggsave("./figure/unconstrained_2_species.pdf", width = 5, height = 5)
 
 t.test(x = null.model.2, y = c(ng.nm, nl.np, c.nt, nk.nl, nm.ns, na.nf))
 
@@ -93,9 +110,23 @@ ggplot(data.frame(x = null.model.3), aes(x = x)) +
     theme_bw() +
     geom_histogram()
 
-# tole nariši na nulti model skupaj s p-ji
-kmp <- mst(spe[spe$Species %in% c("N_kenki_5", "N_multipennatus", "N_pectinicauda"), !grepl("Species|ecomorph|group", x = names(spe))])
-pll <- mst(spe[spe$Species %in% c("N_pupetta", "N_labacensis", "N_longidactylus"), !grepl("Species|ecomorph|group", x = names(spe))])
-gmd <- mst(spe[spe$Species %in% c("N_grandii", "N_microcerberus", "N_dolenianesis"), !grepl("Species|ecomorph|group", x = names(spe))])
+list.o.specs3 <- list(c("N_kenki_5", "N_multipennatus", "N_pectinicauda"),
+                      c("N_pupetta", "N_labacensis", "N_longidactylus"),
+                      c("N_grandii", "N_microcerberus", "N_dolenianesis"))
+
+dist.3spec <- sapply(X = list.o.specs3,
+       FUN = function(x, spe) mst(spe[spe$Species %in% x, !grepl("Species|ecomorph|group", x = names(spe))]),
+       spe = spe)
+
+dist.3specs <- data.frame(dists = dist.3spec, specs = sapply(list.o.specs3, paste, collapse = "-"))
+dist.3specs$pval <- sapply(dist.3specs$dists, FUN = function(x) prop(table(x < null.model.3)))
+dist.3specs$label <- sprintf("%s: %.3f", dist.3specs$specs, dist.3specs$pval)
+
+last_plot() +
+    geom_vline(data = dist.3specs, aes(xintercept = dists)) +
+    geom_text(data = dist.3specs, aes(x = dists, y = 40, label = label),
+              angle = 90, vjust = 1.2, size = 2.5)
+
+ggsave("./figure/unconstrained_3_species.pdf", width = 5, height = 5)
 
 t.test(x = null.model.3, y = c(kmp, pll, gmd))
